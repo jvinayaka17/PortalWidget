@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NOK Portal Assistant</title>
+    <title>Portal Assistant</title>
 </head>
 <body style="font-family: Arial, sans-serif; background-color: #f4f6f9; padding: 40px;">
 
     <div style="max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
         <h2>Cadet Unit Portal (Test Page)</h2>
-        <p>This is a test host page for the Portal chat widget. Look at the bottom right corner of your screen!</p>
+        <p>This is a test host page for Portal floating chat widget. Look at the bottom right corner of your screen!</p>
     </div>
 
     <!-- NOK FLOATING CHAT WIDGET -->
@@ -53,7 +53,7 @@
     </style>
 
     <!-- Floating Toggle Button -->
-    <div id="nok-chat-bubble" onclick="toggleChatPopup()" title="Open Portal Assistant">💬</div>
+    <div id="nok-chat-bubble" onclick="toggleChatPopup()" title="Open NOK Assistant">💬</div>
 
     <!-- Floating Popup Container -->
     <div id="nok-chat-window-container">
@@ -68,7 +68,7 @@
         <div id="popup-auth-gate" style="padding: 30px; text-align: center; margin-top: 30px;">
             <h3>🔐 Security Verification</h3>
             <p style="font-size: 13px; color: #666; margin-bottom: 20px;">Please enter your Cadet PIN to unlock the assistant.</p>
-            <input type="text" id="popup-pin-input" placeholder="Enter PIN (e.g., PIN1)" style="padding: 10px; width: 85%; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; text-align: center;" />
+            <input type="text" id="popup-pin-input" placeholder="Enter PIN (must be 8 digits)" style="padding: 10px; width: 85%; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; text-align: center;" />
             <br><br>
             <button onclick="verifyPopupPin()" style="padding: 10px 20px; background: #0078d4; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Verify PIN</button>
             <p id="popup-error-msg" style="color: #d9534f; margin-top: 15px; font-size: 12px; font-weight: bold;"></p>
@@ -121,7 +121,8 @@
                 });
                 const data = await response.json();
 
-                if (data.success || data.verified || data.status === "success") {
+                // Correctly checking your Python function's return format: {"status": "verified"}
+                if (data.status === "verified") {
                     sessionStorage.setItem('nok_verified', 'true');
                     document.getElementById('popup-auth-gate').style.display = 'none';
                     document.getElementById('popup-chat-interface').style.display = 'flex';
