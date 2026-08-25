@@ -39,7 +39,7 @@
             bottom: 90px;
             right: 20px;
             width: 380px;
-            height: 500px;
+            height: 520px;
             background: white;
             border: 1px solid #ccc;
             border-radius: 10px;
@@ -50,6 +50,39 @@
             font-family: Arial, sans-serif;
             overflow: hidden;
         }
+
+        .chat-bubble-agent {
+            align-self: flex-start;
+            background: #f0f4f8;
+            color: #222;
+            padding: 10px 14px;
+            border-radius: 12px 12px 12px 2px;
+            max-width: 85%;
+            font-size: 13px;
+            line-height: 1.45;
+            white-space: pre-wrap;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .chat-bubble-user {
+            align-self: flex-end;
+            background: #0078d4;
+            color: white;
+            padding: 10px 14px;
+            border-radius: 12px 12px 2px 12px;
+            max-width: 85%;
+            font-size: 13px;
+            line-height: 1.45;
+            white-space: pre-wrap;
+        }
+
+        .chat-loading {
+            font-style: italic;
+            color: #777;
+            align-self: flex-start;
+            padding: 8px 12px;
+            font-size: 12px;
+        }
     </style>
 
     <!-- Floating Toggle Button -->
@@ -59,114 +92,199 @@
     <div id="nok-chat-window-container">
         
         <!-- Popup Header -->
-        <div style="background: #0078d4; color: white; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-weight: bold;">Portal Assistant</span>
-            <span onclick="toggleChatPopup()" style="cursor: pointer; font-size: 20px; font-weight: bold;">&times;</span>
+        <div style="background: #0078d4; color: white; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <span style="font-weight: bold; font-size: 15px;">Portal Assistant</span>
+                <div id="header-status" style="font-size: 11px; opacity: 0.85;">Sea Cadets Assistant</div>
+            </div>
+            <span onclick="toggleChatPopup()" style="cursor: pointer; font-size: 22px; font-weight: bold; line-height: 1;">&times;</span>
         </div>
 
         <!-- VIEW 1: PIN AUTH GATE -->
         <div id="popup-auth-gate" style="padding: 30px; text-align: center; margin-top: 30px;">
             <h3>🔐 Security Verification</h3>
             <p style="font-size: 13px; color: #666; margin-bottom: 20px;">Please enter your Cadet PIN to unlock the assistant.</p>
-            <input type="text" id="popup-pin-input" placeholder="Enter PIN (PIN must be 8 digits)" style="padding: 10px; width: 85%; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; text-align: center;" />
+            <input type="text" id="popup-pin-input" placeholder="Enter 8-digit PIN" maxlength="8" onkeypress="handlePinKey(event)" style="padding: 10px; width: 80%; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; text-align: center; letter-spacing: 2px;" />
             <br><br>
-            <button onclick="verifyPopupPin()" style="padding: 10px 20px; background: #0078d4; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Verify PIN</button>
+            <button id="verify-btn" onclick="verifyPopupPin()" style="padding: 10px 22px; background: #0078d4; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Verify PIN</button>
             <p id="popup-error-msg" style="color: #d9534f; margin-top: 15px; font-size: 12px; font-weight: bold;"></p>
         </div>
 
         <!-- VIEW 2: CHAT INTERFACE -->
-        <div id="popup-chat-interface" style="display: none; flex-direction: column; height: calc(100% - 45px);">
-            <div id="popup-chat-history" style="flex: 1; padding: 15px; overflow-y: auto; background: #f9f9f9; display: flex; flex-direction: column; gap: 10px;">
-                <div style="align-self: flex-start; background: #e2e8f0; color: #333; padding: 10px 12px; border-radius: 8px; max-width: 85%; font-size: 13px; line-height: 1.4;">
+        <div id="popup-chat-interface" style="display: none; flex-direction: column; height: calc(100% - 50px);">
+            <div id="popup-chat-history" style="flex: 1; padding: 15px; overflow-y: auto; background: #f9f9f9; display: flex; flex-direction: column; gap: 12px;">
+                <div id="welcome-msg" class="chat-bubble-agent">
                     Hello! You are securely verified. How can I help you today?
                 </div>
             </div>
-            <div style="padding: 10px; background: white; border-top: 1px solid #ddd; display: flex; gap: 8px;">
-                <input type="text" id="popup-user-input" placeholder="Type a message..." onkeypress="handlePopupKey(event)" style="flex: 1; padding: 9px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px;" />
-                <button onclick="sendPopupMessage()" style="padding: 9px 14px; background: #0078d4; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Send</button>
+            <div style="padding: 10px; background: white; border-top: 1px solid #eee; display: flex; gap: 8px; align-items: center;">
+                <input type="text" id="popup-user-input" placeholder="Type your request here..." onkeypress="handlePopupKey(event)" style="flex: 1; padding: 10px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; outline: none;" />
+                <button id="send-btn" onclick="sendPopupMessage()" style="padding: 10px 16px; background: #0078d4; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Send</button>
             </div>
         </div>
 
     </div>
 
     <script>
+        const API_BASE_URL = 'https://nokunitlookup-hba2e5gqhqgpg6a7.uksouth-01.azurewebsites.net/api';
+        
+        let currentThreadId = sessionStorage.getItem('nok_thread_id') || null;
+        let verifiedCadetContext = null;
+
         window.addEventListener('DOMContentLoaded', () => {
-            if (sessionStorage.getItem('nok_verified') === 'true') {
-                document.getElementById('popup-auth-gate').style.display = 'none';
-                document.getElementById('popup-chat-interface').style.display = 'flex';
+            const savedContext = sessionStorage.getItem('cadet_context');
+            if (savedContext) {
+                try {
+                    verifiedCadetContext = JSON.parse(savedContext);
+                    showChatView(verifiedCadetContext);
+                } catch (e) {
+                    sessionStorage.clear();
+                }
             }
         });
 
         function toggleChatPopup() {
             const box = document.getElementById('nok-chat-window-container');
             box.style.display = (box.style.display === 'flex') ? 'none' : 'flex';
+            if (box.style.display === 'flex') {
+                const input = document.getElementById(verifiedCadetContext ? 'popup-user-input' : 'popup-pin-input');
+                if (input) input.focus();
+            }
         }
 
-        async function verifyPopupPin() {
-            const pin = document.getElementById('popup-pin-input').value.trim();
-            const errorMsg = document.getElementById('popup-error-msg');
-            
-            if (!pin) {
-                errorMsg.innerText = "Please enter a PIN.";
-                return;
-            }
-            
-            errorMsg.innerText = "Verifying...";
-
-            try {
-                const response = await fetch('https://nokunitlookup-hba2e5gqhqgpg6a7.uksouth-01.azurewebsites.net/api/verify_nok', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ pin: pin })
-                });
-                const data = await response.json();
-
-                if (data.status === "verified") {
-                    sessionStorage.setItem('nok_verified', 'true');
-                    document.getElementById('popup-auth-gate').style.display = 'none';
-                    document.getElementById('popup-chat-interface').style.display = 'flex';
-                } else {
-                    errorMsg.innerText = "Invalid PIN. Please try again.";
-                }
-            } catch (err) {
-                console.error(err);
-                errorMsg.innerText = "Connection error validating PIN.";
-            }
+        function handlePinKey(e) {
+            if (e.key === 'Enter') verifyPopupPin();
         }
 
         function handlePopupKey(e) {
             if (e.key === 'Enter') sendPopupMessage();
         }
 
+        function showChatView(context) {
+            document.getElementById('popup-auth-gate').style.display = 'none';
+            document.getElementById('popup-chat-interface').style.display = 'flex';
+            
+            if (context && context.cadet_name) {
+                document.getElementById('header-status').innerText = `Cadet: ${context.cadet_name} (${context.unit_name || ''})`;
+                document.getElementById('welcome-msg').innerText = `Hello! You are verified for Cadet ${context.cadet_name}. How can I assist you with ${context.unit_name || 'unit matters'} today?`;
+            }
+        }
+
+        async function verifyPopupPin() {
+            const pinInput = document.getElementById('popup-pin-input');
+            const errorMsg = document.getElementById('popup-error-msg');
+            const verifyBtn = document.getElementById('verify-btn');
+            const pin = pinInput.value.trim();
+            
+            if (!pin) {
+                errorMsg.innerText = "Please enter an 8-digit PIN.";
+                return;
+            }
+            
+            errorMsg.style.color = "#555";
+            errorMsg.innerText = "Verifying PIN...";
+            verifyBtn.disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/verify_nok`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pin: pin })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && (data.valid === true || data.status === "verified")) {
+                    verifiedCadetContext = {
+                        cadet_name: data.cadet_name || "",
+                        unit_name: data.unit_name || "",
+                        nok_name: data.nok_name || "",
+                        nok_email: data.nok_email || "",
+                        pin: pin
+                    };
+
+                    sessionStorage.setItem('cadet_context', JSON.stringify(verifiedCadetContext));
+                    sessionStorage.removeItem('nok_thread_id'); // Reset conversation thread for new login
+                    currentThreadId = null;
+
+                    showChatView(verifiedCadetContext);
+                } else {
+                    errorMsg.style.color = "#d9534f";
+                    errorMsg.innerText = data.message || "Invalid PIN. Please try again.";
+                }
+            } catch (err) {
+                console.error(err);
+                errorMsg.style.color = "#d9534f";
+                errorMsg.innerText = "Connection error validating PIN.";
+            } finally {
+                verifyBtn.disabled = false;
+            }
+        }
+
         async function sendPopupMessage() {
             const input = document.getElementById('popup-user-input');
             const history = document.getElementById('popup-chat-history');
+            const sendBtn = document.getElementById('send-btn');
             const text = input.value.trim();
             if (!text) return;
 
-            history.innerHTML += `<div style="align-self: flex-end; background: #0078d4; color: white; padding: 10px 12px; border-radius: 8px; max-width: 85%; font-size: 13px; line-height: 1.4;">${escapeHtml(text)}</div>`;
+            // 1. Render User Message
+            history.innerHTML += `<div class="chat-bubble-user">${escapeHtml(text)}</div>`;
             input.value = '';
+            
+            // 2. Render Loading State
+            const loadingId = 'loading-' + Date.now();
+            history.innerHTML += `<div id="${loadingId}" class="chat-loading">Agent is thinking...</div>`;
             history.scrollTop = history.scrollHeight;
+            
+            input.disabled = true;
+            sendBtn.disabled = true;
 
             try {
-                const response = await fetch('https://nokunitlookup-hba2e5gqhqgpg6a7.uksouth-01.azurewebsites.net/api/chat_agent', {
+                const response = await fetch(`${API_BASE_URL}/chat_agent`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: text })
+                    body: JSON.stringify({
+                        message: text,
+                        thread_id: currentThreadId,
+                        cadet_context: verifiedCadetContext
+                    })
                 });
-                const data = await response.json();
-                const agentReply = data.reply || data.error || "No response from agent.";
 
-                history.innerHTML += `<div style="align-self: flex-start; background: #e2e8f0; color: #333; padding: 10px 12px; border-radius: 8px; max-width: 85%; font-size: 13px; line-height: 1.4;">${escapeHtml(agentReply)}</div>`;
+                const data = await response.json();
+                
+                // Remove Loading Indicator
+                const loadingElem = document.getElementById(loadingId);
+                if (loadingElem) loadingElem.remove();
+
+                if (data.thread_id) {
+                    currentThreadId = data.thread_id;
+                    sessionStorage.setItem('nok_thread_id', currentThreadId);
+                }
+
+                const agentReply = data.response || data.reply || data.error || "No response received from agent.";
+                history.innerHTML += `<div class="chat-bubble-agent">${escapeHtml(agentReply)}</div>`;
             } catch (err) {
                 console.error(err);
-                history.innerHTML += `<div style="align-self: flex-start; background: #fde8e8; color: #9b1c1c; padding: 10px 12px; border-radius: 8px; max-width: 85%; font-size: 13px; line-height: 1.4;">Error communicating with agent.</div>`;
+                const loadingElem = document.getElementById(loadingId);
+                if (loadingElem) loadingElem.remove();
+                history.innerHTML += `<div class="chat-bubble-agent" style="background: #fde8e8; color: #9b1c1c;">Connection error communicating with agent.</div>`;
+            } finally {
+                input.disabled = false;
+                sendBtn.disabled = false;
+                input.focus();
+                history.scrollTop = history.scrollHeight;
             }
-            history.scrollTop = history.scrollHeight;
         }
 
         function escapeHtml(text) {
-            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            if (!text) return "";
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         }
     </script>
 </body>
