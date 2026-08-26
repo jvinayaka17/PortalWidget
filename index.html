@@ -126,7 +126,11 @@
     </div>
 
     <script>
-        const API_BASE_URL = 'https://nokunitlookup-hba2e5gqhqgpg6a7.uksouth-01.azurewebsites.net/api';
+        // PRODUCTION URL - restore before pushing to GitHub      
+        //  const API_BASE_URL = 'https://nokunitlookup-hba2e5gqhqgpg6a7.uksouth-01.azurewebsites.net/api';
+
+        // TEMP - LOCAL TESTING ONLY
+        const API_BASE_URL = "http://localhost:7071/api";
         
         let currentThreadId = sessionStorage.getItem('nok_thread_id') || null;
         let verifiedCadetContext = null;
