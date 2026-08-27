@@ -7,9 +7,18 @@
 </head>
 <body style="font-family: Arial, sans-serif; background-color: #f4f6f9; padding: 40px;">
 
-    <div style="max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+  <!-- <div style="max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
         <h2>Cadet Unit Portal (Test Page)</h2>
         <p>This is a test host page for the Portal floating chat widget. Look at the bottom right corner of your screen!</p>
+     </div> -->
+
+     <div style="background: #00AEEF; margin: -40px -40px 30px -40px;">
+        <img src="logo.png" alt="Sea Cadets" style="display: block; width: 100%; max-height: 140px; object-fit: cover; object-position: left center;">
+    </div>
+
+    <div style="max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <h2>Welcome</h2>
+        <p>This is your Sea Cadets Portal assistant. Use the chat button in the bottom-right corner to ask about registration, courses, uniforms, unit subscription payments, parade absences, and more.</p>
     </div>
 
     <!-- NOK FLOATING CHAT WIDGET -->
@@ -127,10 +136,10 @@
 
     <script>
         // PRODUCTION URL - restore before pushing to GitHub      
-        //  const API_BASE_URL = 'https://nokunitlookup-hba2e5gqhqgpg6a7.uksouth-01.azurewebsites.net/api';
+        const API_BASE_URL = 'https://nokunitlookup-hba2e5gqhqgpg6a7.uksouth-01.azurewebsites.net/api';
 
         // TEMP - LOCAL TESTING ONLY
-        const API_BASE_URL = "http://localhost:7071/api";
+        //const API_BASE_URL = "http://localhost:7071/api";
         
         let currentThreadId = sessionStorage.getItem('nok_thread_id') || null;
         let verifiedCadetContext = null;
