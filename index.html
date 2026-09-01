@@ -206,13 +206,15 @@
                 });
 
                 const data = await response.json();
+                console.log("verify_nok response:", data); // TEMP - check field names in console, remove later
 
-                if (response.ok && (data.valid === true || data.status === "verified")) {
+                if (response.ok && data.success === true) {
+                    const record = data.data || {};
                     verifiedCadetContext = {
-                        cadet_name: data.cadet_name || "",
-                        unit_name: data.unit_name || "",
-                        nok_name: data.nok_name || "",
-                        nok_email: data.nok_email || "",
+                        cadet_name: record.cadet_name || record["cadet name"] || "",
+                        unit_name: record.unit_name || record["unit name"] || record.unit || "",
+                        nok_name: record.nok_name || record["nok name"] || "",
+                        nok_email: record.email || record.nok_email || "",
                         pin: pin
                     };
 
