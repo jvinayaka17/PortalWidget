@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sea Cadets Portal Assistant</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: transparent; font-family: Arial, sans-serif;">
+
+    <!-- NOK FLOATING CHAT WIDGET (Universal Drop-In) -->
+    <style>
+        #nok-chat-bubble {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background-color: #0078d4;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            cursor: pointer;
+            z-index: 99999;
+            transition: transform 0.2s;
+        }
+        #nok-chat-bubble:hover { transform: scale(1.05); }
+
+        #nok-chat-window-container {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            width: 380px;
+            height: 520px;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            display: none;
+            flex-direction: column;
+            z-index: 99999;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        .chat-bubble-agent {
+            align-self: flex-start;
+            background: #f0f4f8;
+            color: #222;
+            padding: 10px 14px;
+            border-radius: 12px 12px 12px 2px;
+            max-width: 85%;
+            font-size: 13px;
+            line-height: 1.45;
+            white-space: pre-wrap;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .chat-bubble-user {
+            align-self: flex-end;
+            background: #0078d4;
+            color: white;
+            padding: 10px 14px;
+            border-radius: 12px 12px 2px 12px;
+            max-width: 85%;
+            font-size: 13px;
+            line-height: 1.45;
+            white-space: pre-wrap;
+        }
+
+        .chat-loading {
+            font-style: italic;
+            color: #777;
+            align-self: flex-start;
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+    </style>
+
+    <!-- Floating Toggle Button -->
+    <div id="nok-chat-bubble" onclick="toggleChatPopup()" title="Open Sea Cadets Assistant">💬</div>
+
+    <!-- Floating Popup Container -->
+    <div id="nok-chat-window-container">
+        
+        <!-- Popup Header -->
+        <div style="background: #0078d4; color: white; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <span style="font-weight: bold; font-size: 15px;">Sea Cadets Portal Assistant</span>
+                <div id="header-status" style="font-size: 11px; opacity: 0.85;">Secure Portal Support</div>
+            </div>
+            <span onclick="toggleChatPopup()" style="cursor: pointer; font-size: 22px; font-weight: bold; line-height: 1;">&times;</span>
+        </div>
+
+        <!-- VIEW 1: PIN AUTH GATE -->
+        <div id="popup-auth-gate" style="padding: 30px; text-align: center; margin-top: 20px;">
+            <h3>🔐 Security Verification</h3>
+            <p style="font-size: 13px; color: #666; margin-bottom: 20px;">Please enter your Cadet PIN to unlock the assistant.</p>
+            <input type="text" id="popup-pin-input" placeholder="Enter PIN" maxlength="8" onkeypress="handlePinKey(event)" style="padding: 10px; width: 80%; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; text-align: center; letter-spacing: 2px;" />
+            <br><br>
+            <button id="verify-btn" onclick="verifyPopupPin()" style="padding: 10px 22px; background: #0078d4; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Verify PIN</button>
+            <p id="popup-error-msg" style="color: #d9534f; margin-top: 15px; font-size: 12px; font-weight: bold;"></p>
+        </div>
+
+        <!-- VIEW 2: CHAT INTERFACE -->
+        <div id="popup-chat-interface" style="display: none; flex-direction: column; height: calc(100% - 50px);">
+            <div id="popup-chat-history" style="flex: 1; padding: 15px; overflow-y: auto; background: #f9f9f9; display: flex; flex-direction: column; gap: 12px;">
+                <div id="welcome-msg" class="chat-bubble-agent">
+                    Hello! I am your Sea Cadets Portal Assistant. Ask me about portal sign-up, course bookings, bursaries, joining instructions, or finding your local unit contact email.
+                </div>
+            </div>
+            <div style="padding: 10px; background: white; border-top: 1px solid #eee; display: flex; gap: 8px; align-items: center;">
+                <input type="text" id="popup-user-input" placeholder="Type your question here..." onkeypress="handlePopupKey(event)" style="flex: 1; padding: 10px; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; outline: none;" />
+                <button id="send-btn" onclick="sendPopupMessage()" style="padding: 10px 16px; background: #0078d4; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Send</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // PRODUCTION API URL pointing to Azure Function App
+        const API_BASE_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+          ? "http://localhost:7071/api"
+          : "https://nokunitlookup-hba2e5gqhqgpg6a7.uksouth-01.azurewebsites.net/api";
+        
+        let currentThreadId = sessionStorage.getItem('nok_thread_id') || null;
+        let verifiedCadetContext = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedContext = sessionStorage.getItem('cadet_context');
+            if (savedContext) {
+                try {
+                    verifiedCadetContext = JSON.parse(savedContext);
+                    showChatView(verifiedCadetContext);
+                } catch (e) {
+                    sessionStorage.clear();
+                }
+            }
+        });
+
+        function toggleChatPopup() {
+            const box = document.getElementById('nok-chat-window-container');
+            box.style.display = (box.style.display === 'flex') ? 'none' : 'flex';
+            if (box.style.display === 'flex') {
+                const input = document.getElementById(verifiedCadetContext ? 'popup-user-input' : 'popup-pin-input');
+                if (input) input.focus();
+            }
+        }
+
+        function handlePinKey(e) {
+            if (e.key === 'Enter') verifyPopupPin();
+        }
+
+        function handlePopupKey(e) {
+            if (e.key === 'Enter') sendPopupMessage();
+        }
+
+        function showChatView(context) {
+            document.getElementById('popup-auth-gate').style.display = 'none';
+            document.getElementById('popup-chat-interface').style.display = 'flex';
+            
+            if (context && context.cadet_name) {
+                document.getElementById('header-status').innerText = `Cadet: ${context.cadet_name} (${context.unit_name || ''})`;
+            }
+        }
+
+        async function verifyPopupPin() {
+            const pinInput = document.getElementById('popup-pin-input');
+            const errorMsg = document.getElementById('popup-error-msg');
+            const verifyBtn = document.getElementById('verify-btn');
+            const pin = pinInput.value.trim();
+            
+            if (!pin) {
+                errorMsg.innerText = "Please enter your PIN.";
+                return;
+            }
+            
+            errorMsg.style.color = "#555";
+            errorMsg.innerText = "Verifying PIN...";
+            verifyBtn.disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/verify_nok`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pin: pin })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success === true) {
+                    const record = data.data || {};
+                    verifiedCadetContext = {
+                        cadet_name: record.cadet_name || record["cadet name"] || "",
+                        unit_name: record.unit_name || record["unit name"] || record.unit || "",
+                        nok_name: record.nok_name || record["nok name"] || "",
+                        nok_email: record.email || record.nok_email || "",
+                        pin: pin
+                    };
+
+                    sessionStorage.setItem('cadet_context', JSON.stringify(verifiedCadetContext));
+                    sessionStorage.removeItem('nok_thread_id');
+                    currentThreadId = null;
+
+                    showChatView(verifiedCadetContext);
+                } else {
+                    errorMsg.style.color = "#d9534f";
+                    errorMsg.innerText = data.message || "Invalid PIN. Please try again.";
+                }
+            } catch (err) {
+                console.error(err);
+                errorMsg.style.color = "#d9534f";
+                errorMsg.innerText = "Connection error validating PIN.";
+            } finally {
+                verifyBtn.disabled = false;
+            }
+        }
+
+        async function sendPopupMessage() {
+            const input = document.getElementById('popup-user-input');
+            const history = document.getElementById('popup-chat-history');
+            const sendBtn = document.getElementById('send-btn');
+            const text = input.value.trim();
+            if (!text) return;
+
+            // 1. Render User Message
+            history.innerHTML += `<div class="chat-bubble-user">${escapeHtml(text)}</div>`;
+            input.value = '';
+            
+            // 2. Render Loading State
+            const loadingId = 'loading-' + Date.now();
+            history.innerHTML += `<div id="${loadingId}" class="chat-loading">Agent is thinking...</div>`;
+            history.scrollTop = history.scrollHeight;
+            
+            input.disabled = true;
+            sendBtn.disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/chat_agent`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: text,
+                        thread_id: currentThreadId,
+                        cadet_context: verifiedCadetContext
+                    })
+                });
+
+                const data = await response.json();
+                
+                const loadingElem = document.getElementById(loadingId);
+                if (loadingElem) loadingElem.remove();
+
+                if (data.thread_id) {
+                    currentThreadId = data.thread_id;
+                    sessionStorage.setItem('nok_thread_id', currentThreadId);
+                }
+
+                const agentReply = data.response || data.reply || data.error || "No response received from agent.";
+                history.innerHTML += `<div class="chat-bubble-agent">${escapeHtml(agentReply)}</div>`;
+            } catch (err) {
+                console.error(err);
+                const loadingElem = document.getElementById(loadingId);
+                if (loadingElem) loadingElem.remove();
+                history.innerHTML += `<div class="chat-bubble-agent" style="background: #fde8e8; color: #9b1c1c;">Connection error communicating with agent.</div>`;
+            } finally {
+                input.disabled = false;
+                sendBtn.disabled = false;
+                input.focus();
+                history.scrollTop = history.scrollHeight;
+            }
+        }
+
+        function escapeHtml(text) {
+            if (!text) return "";
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
