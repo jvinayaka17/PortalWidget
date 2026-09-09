@@ -121,12 +121,8 @@
     </div>
 
     <script>
-        
-       // PRODUCTION URL - restore before pushing to GitHub      
+        // PRODUCTION URL
         const API_BASE_URL = 'https://nokunitlookup-hba2e5gqhqgpg6a7.uksouth-01.azurewebsites.net/api';
-
-        // TEMP - LOCAL TESTING ONLY
-        //const API_BASE_URL = "http://localhost:7071/api";
         
         let currentThreadId = sessionStorage.getItem('nok_thread_id') || null;
         let verifiedCadetContext = null;
@@ -196,10 +192,10 @@
                 if (response.ok && data.success === true) {
                     const record = data.data || {};
                     verifiedCadetContext = {
-                        cadet_name: record.cadet_name || record["cadet name"] || "",
-                        unit_name: record.unit_name || record["unit name"] || record.unit || "",
+                        cadet_name: record.cadet_name || record["cadet name"] || record.Name || "",
+                        unit_name: record.unit_name || record["unit name"] || record.unit || record.Unit || "",
                         nok_name: record.nok_name || record["nok name"] || "",
-                        nok_email: record.email || record.nok_email || "",
+                        nok_email: record.email || record.nok_email || record["nok email"] || "",
                         pin: pin
                     };
 
@@ -240,6 +236,12 @@
             input.disabled = true;
             sendBtn.disabled = true;
 
+            // Format context string so backend function_app.py picks it up correctly
+            let contextString = "";
+            if (verifiedCadetContext) {
+                contextString = `Cadet: ${verifiedCadetContext.cadet_name}, Unit: ${verifiedCadetContext.unit_name}, NOK Email: ${verifiedCadetContext.nok_email}`;
+            }
+
             try {
                 const response = await fetch(`${API_BASE_URL}/chat_agent`, {
                     method: 'POST',
@@ -247,7 +249,7 @@
                     body: JSON.stringify({
                         message: text,
                         thread_id: currentThreadId,
-                        cadet_context: verifiedCadetContext
+                        context: contextString  // <--- FIXED: matches backend "context" property
                     })
                 });
 
